@@ -21,7 +21,7 @@ jobs:
       - name: Login to Aliyun ACR
         uses: docker/login-action@v3
         with:
-          registry: registry.cn-shanghai.aliyuncs.com
+          registry: ${{ secrets.ACR_URL }}
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
@@ -32,13 +32,15 @@ jobs:
       - name: Set image tags
         id: tags
         run: |
+          REGISTRY="${{ secrets.ACR_URL }}"
           IMAGE_NAME="${{ secrets.ACR_NAMESPACE }}/${{ secrets.ACR_IMAGE_NAME }}"
-          SHA_TAG="${{ github.sha }}"
-          VERSION_TAG="${{ steps.version.outputs.version }}"
+          SHA_TAG="${REGISTRY}/${IMAGE_NAME}:${{ github.sha }}"
+          VERSION_TAG="${REGISTRY}/${IMAGE_NAME}:${{ steps.version.outputs.version }}"
+          LATEST_TAG="${REGISTRY}/${IMAGE_NAME}:latest"
 
-          echo "sha_tag=$IMAGE_NAME:$SHA_TAG" >> $GITHUB_OUTPUT
-          echo "version_tag=$IMAGE_NAME:$VERSION_TAG" >> $GITHUB_OUTPUT
-          echo "latest_tag=$IMAGE_NAME:latest" >> $GITHUB_OUTPUT
+          echo "sha_tag=$SHA_TAG" >> $GITHUB_OUTPUT
+          echo "version_tag=$VERSION_TAG" >> $GITHUB_OUTPUT
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6

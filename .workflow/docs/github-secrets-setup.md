@@ -6,7 +6,20 @@ This document describes the required GitHub Actions Secrets for pushing Docker i
 
 Configure the following secrets in your GitHub repository Settings > Secrets and variables > Actions:
 
-### 1. ACR_USERNAME
+### 1. ACR_URL
+Your Aliyun ACR registry URL.
+
+**Format:**
+- Full registry address including region
+- Example: `registry.cn-shanghai.aliyuncs.com`
+
+**Common regions:**
+- `registry.cn-hangzhou.aliyuncs.com` (China East 1)
+- `registry.cn-shanghai.aliyuncs.com` (China East 2)
+- `registry.cn-beijing.aliyuncs.com` (China North 2)
+- `registry.cn-shenzhen.aliyuncs.com` (China South 1)
+
+### 2. ACR_USERNAME
 Your Aliyun ACR username for authentication.
 
 **How to obtain:**
@@ -15,7 +28,7 @@ Your Aliyun ACR username for authentication.
 - Set a password for your registry username (typically your Aliyun account ID)
 - Copy the username
 
-### 2. ACR_PASSWORD
+### 3. ACR_PASSWORD
 Your Aliyun ACR password/access token.
 
 **How to obtain:**
@@ -24,14 +37,14 @@ Your Aliyun ACR password/access token.
 - Use a strong password or access token
 - Copy the password/token
 
-### 3. ACR_NAMESPACE
+### 4. ACR_NAMESPACE
 Your Aliyun ACR namespace (registry path).
 
 **Format:**
 - For Personal Edition: Your Aliyun account ID or custom namespace
 - Example: `your-namespace` (this becomes part of the image path)
 
-### 4. ACR_IMAGE_NAME
+### 5. ACR_IMAGE_NAME
 The name of your Docker image in ACR.
 
 **Format:**
@@ -42,7 +55,7 @@ The name of your Docker image in ACR.
 
 The workflow will push images to:
 ```
-registry.cn-shanghai.aliyuncs.com/${ACR_NAMESPACE}/${ACR_IMAGE_NAME}:<tag>
+${ACR_URL}/${ACR_NAMESPACE}/${ACR_IMAGE_NAME}:<tag>
 ```
 
 Example:
@@ -67,8 +80,8 @@ The workflow automatically creates three tags:
 - Ensure namespace exists in your Aliyun ACR
 
 ### Registry Not Found
+- Verify ACR_URL is correct (includes region)
 - Verify ACR_NAMESPACE matches your actual namespace
-- Check region is correct (cn-shanghai for this workflow)
 - Ensure you have permissions to push to this namespace
 
 ### Image Name Invalid
@@ -78,4 +91,4 @@ The workflow automatically creates three tags:
 
 ## Aliyun ACR Personal Edition
 
-This workflow is configured for Aliyun ACR Personal Edition in the `cn-shanghai` region. For other regions, update the registry URL in `.github/workflows/docker-build.yml`.
+This workflow is configured for Aliyun ACR Personal Edition. Configure the `ACR_URL` secret with your preferred region (e.g., `registry.cn-shanghai.aliyuncs.com`).
