@@ -67,6 +67,3 @@ docker-compose*.yaml
 # Scripts and development tools
 scripts
 *.spec.ts
-vitest.config.ts
-tsconfig.json
-!sources/tsconfig.json
