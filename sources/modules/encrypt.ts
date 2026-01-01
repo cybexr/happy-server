@@ -3,8 +3,14 @@ import { KeyTree, crypto } from "privacy-kit";
 let keyTree: KeyTree | null = null;
 
 export async function initEncrypt() {
+    const masterSecret = process.env.HANDY_MASTER_SECRET ?? 'default-dev-key-change-in-production';
+
+    if (!process.env.HANDY_MASTER_SECRET) {
+        console.warn('⚠️  HANDY_MASTER_SECRET not set - using default development key. This is NOT secure for production!');
+    }
+
     keyTree = new KeyTree(await crypto.deriveSecureKey({
-        key: process.env.HANDY_MASTER_SECRET!,
+        key: masterSecret,
         usage: 'happy-server-tokens'
     }));
 }
