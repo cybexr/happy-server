@@ -65,11 +65,17 @@ registry.cn-shanghai.aliyuncs.com/your-namespace/happy-server:0.0.0
 registry.cn-shanghai.aliyuncs.com/your-namespace/happy-server:latest
 ```
 
+## Workflow Triggers
+
+The workflow is triggered by:
+1. **Tag creation**: When you push a version tag (e.g., `v1.0.0`)
+2. **Manual trigger**: Via GitHub Actions UI "Run workflow" button
+
 ## Image Tags
 
 The workflow automatically creates three tags:
-1. **Git SHA tag**: `abc123def` (short commit hash) - every build
-2. **Version tag**: `0.0.0` (from package.json) - every build
+1. **Git SHA tag**: Full commit SHA - every build
+2. **Version tag**: Semantic version from package.json - every build
 3. **Latest tag**: `latest` - always points to most recent build
 
 ## Troubleshooting

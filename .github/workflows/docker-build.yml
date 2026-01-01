@@ -2,10 +2,9 @@ name: Docker Build and Push to ACR
 
 on:
   push:
-    branches:
-      - main
     tags:
       - 'v*.*.*'
+  workflow_dispatch:
 
 jobs:
   build-and-push:
