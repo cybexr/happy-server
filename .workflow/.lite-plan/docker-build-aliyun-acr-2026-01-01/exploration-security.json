@@ -1,0 +1,92 @@
+{
+  "project_structure": "TypeScript Fastify application with 78 modules organized in /sources directory. Security and credential management spans: runtime secrets (Vault + ExternalSecret Operator), application authentication modules (/sources/app/auth, /sources/modules/github.ts, /sources/modules/encrypt.ts), and Kubernetes deployment manifests (/deploy). Current infrastructure uses HashiCorp Vault via external-secrets.io for runtime credential injection, with no existing CI/CD pipeline or GitHub workflows.",
+  "relevant_files": [
+    {
+      "path": "deploy/handy.yaml",
+      "relevance": 1.0,
+      "rationale": "Core security reference: shows ExternalSecret operator pattern with Vault backend for secret management (vault-backend, /handy-* secret paths). Critical for understanding how secrets are injected at runtime vs CI/CD requirements."
+    },
+    {
+      "path": "Dockerfile",
+      "relevance": 0.95,
+      "rationale": "Build security context: multi-stage Docker build that correctly avoids secrets in images (no build args, no secret copies). Verified clean for ACR integration."
+    },
+    {
+      "path": "sources/modules/github.ts",
+      "relevance": 0.85,
+      "rationale": "Authentication pattern reference: demonstrates environment-based credential consumption (GITHUB_APP_ID, GITHUB_PRIVATE_KEY, GITHUB_WEBHOOK_SECRET). Shows 12-factor app secret access pattern."
+    },
+    {
+      "path": "sources/modules/encrypt.ts",
+      "relevance": 0.7,
+      "rationale": "Encryption utilities: shows HANDY_MASTER_SECRET usage for token encryption via privacy-kit. Reveals application-level secret management patterns."
+    },
+    {
+      "path": "sources/app/auth/auth.ts",
+      "relevance": 0.7,
+      "rationale": "Authentication implementation: demonstrates HANDY_MASTER_SECRET for session token generation. Part of runtime security architecture."
+    },
+    {
+      "path": "sources/storage/files.ts",
+      "relevance": 0.6,
+      "rationale": "S3 credential usage: shows S3_ACCESS_KEY/S3_SECRET_KEY pattern for external service authentication. Parallel to ACR credential needs."
+    }
+  ],
+  "patterns": "**Secret Management**: Vault-backed ExternalSecret operator pattern (deploy/handy.yaml:68-94) - secrets fetched from Vault paths (/handy-github, /handy-files, /handy-e2b, etc.) injected as Kubernetes secrets via envFrom. **Runtime Access**: Direct environment variable consumption (process.env.GITHUB_*, process.env.HANDY_MASTER_SECRET) following 12-factor app methodology. **Docker Security**: Multi-stage build (Dockerfile:1-48) with no secrets in images, no build args for sensitive data. **Credential Type**: Service account keys (GitHub App private key, S3 keys) stored externally, accessed at runtime. **No CI/CD**: No existing GitHub workflows or CI/CD credential management - this is greenfield for ACR push workflow.",
+  "dependencies": "**Security Infrastructure**: HashiCorp Vault (external-secrets.io/v1beta1 operator) for runtime secrets. **Application Dependencies**: privacy-kit for encryption (sources/modules/encrypt.ts), octokit for GitHub App authentication. **Container Runtime**: Docker multi-stage build with node:20 base image. **Required for CI/CD**: GitHub Actions secrets management (for ACR credentials), docker/login-action for ACR authentication, docker/build-push-action for image build/push. **No existing dependencies on**: Aliyun SDK, CI/CD tools, or registry clients.",
+  "integration_points": "**Primary**: GitHub Actions workflow (.github/workflows/ - to be created) for Docker build and ACR push. **Credential Storage Points**: GitHub repository secrets (Settings > Secrets and variables > Actions) for ACR_USERNAME/ACR_PASSWORD. **Authentication Flow**: CI/CD workflow → docker/login-action → Aliyun ACR registry (docker push). **Separation from Runtime**: CI/CD credentials (ACR keys) stored in GitHub Actions Secrets, completely separate from application runtime secrets (Vault). **Build Context**: Dockerfile root directory (.) as build context. **No Integration With**: Vault (CI/CD does not access Vault), existing Kubernetes manifests (deployment uses pre-built images).",
+  "constraints": "**Security Hard Requirements**: 1) No hardcoded secrets in workflow files or scripts, 2) ACR credentials must use GitHub Actions encrypted secrets (not environment variables or files), 3) Follow principle of least privilege for ACR RAM user (only push permissions, no admin access), 4) Maintain separation between CI/CD secrets (GitHub) and runtime secrets (Vault). **Technical Constraints**: Must use existing Dockerfile build process, cannot inject secrets into container images, must use .dockerignore to prevent secret file inclusion. **Infrastructure Constraints**: No existing GitHub workflows or CI/CD pipeline, ACR registry endpoint and region must be specified, requires RAM user creation in Aliyun account. **Operational Constraints**: Credential rotation should be supported, build should be idempotent, must handle authentication failures gracefully.",
+  "clarification_needs": [
+    {
+      "question": "Which Aliyun ACR region should be used for the container registry?",
+      "context": "Aliyun ACR is region-specific (e.g., registry.cn-hangzhou.aliyuncs.com, registry.cn-beijing.aliyuncs.com). The region affects the registry endpoint URL and latency characteristics.",
+      "options": [
+        "cn-hangzhou (Hangzhou - China East 1)",
+        "cn-beijing (Beijing - China North 1)",
+        "cn-shenzhen (Shenzhen - China South 1)",
+        "cn-hongkong (Hong Kong - China Hong Kong)"
+      ],
+      "recommended": 0
+    },
+    {
+      "question": "What type of Aliyun ACR registry will be used?",
+      "context": "Aliyun offers Personal Edition (free, limited features) and Enterprise Edition (paid, with advanced features like vulnerability scanning, HPA, etc.). This affects the registry namespace and capabilities.",
+      "options": [
+        "Personal Edition (free, namespace is Aliyun account ID)",
+        "Enterprise Edition (paid, custom namespace)"
+      ],
+      "recommended": 0
+    },
+    {
+      "question": "What should be the image naming convention and tagging strategy?",
+      "context": "Need to define the image repository name and how tags will be generated (e.g., commit SHA, branch name, semantic version). This impacts how images are organized and deployed.",
+      "options": [
+        "happy-server:{git-sha} - Immutable tags for each commit",
+        "happy-server:{version} - Semantic versioning from package.json",
+        "happy-server:latest + happy-server:{branch-name} - Branch-based deployment",
+        "happy-server:{version} and happy-server:latest for current release"
+      ],
+      "recommended": 3
+    },
+    {
+      "question": "Should the workflow trigger on all branches or specific branches only?",
+      "context": "Determines when Docker builds and ACR pushes occur. Building on all branches increases cost but provides immediate feedback. Building on specific branches (main, release/*) reduces cost and registry usage.",
+      "options": [
+        "Only main and release/* branches (production-focused)",
+        "All branches (development-focused, higher cost)",
+        "Manual trigger only (on-demand builds)",
+        "Main branch auto + PR builds for testing (hybrid approach)"
+      ],
+      "recommended": 3
+    }
+  ],
+  "_metadata": {
+    "timestamp": "2026-01-01T14:55:00Z",
+    "task_description": "帮我加个workflow build 并推送到 aliyun acr镜像仓库",
+    "source": "cli-explore-agent",
+    "exploration_angle": "security",
+    "exploration_index": 2,
+    "total_explorations": 3,
+    "duration_seconds": 95
+  }
+}

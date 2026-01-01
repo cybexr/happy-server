@@ -1,0 +1,72 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Workflow and documentation
+.github
+.workflow
+.vscode
+*.md
+!README.md
+
+# Logs
+logs
+*.log
+.logs
+
+# Test coverage
+coverage
+.nyc_output
+
+# Development and build artifacts
+dist
+build
+*.tsbuildinfo
+
+# Database and cache data
+.pgdata
+.prisma
+*.db
+*.db-shm
+*.db-wal
+
+# Temporary files
+tmp
+temp
+.tmp
+.cache
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# IDE files
+.idea
+*.iml
+*.sublime-*
+
+# Deployment files
+deploy
+docker-compose*.yml
+docker-compose*.yaml
+
+# Scripts and development tools
+scripts
+*.spec.ts
+vitest.config.ts
+tsconfig.json
+!sources/tsconfig.json

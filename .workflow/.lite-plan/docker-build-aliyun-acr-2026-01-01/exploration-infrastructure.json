@@ -1,0 +1,101 @@
+{
+  "project_structure": "Monorepo-style Node.js/TypeType application with modular architecture under /sources directory. The project includes app-level modules (api, auth, events, feed, github, kv, monitoring, presence, session, social), shared modules, storage layer, utilities, and deployment configurations. Infrastructure is minimal - existing Kubernetes deployment manifest in /deploy directory targets docker.korshakov.com registry. No existing GitHub workflows or CI/CD pipelines found.",
+  "relevant_files": [
+    {
+      "path": "Dockerfile",
+      "relevance": 1.0,
+      "rationale": "Multi-stage Docker build (node:20) - builder stage compiles TypeScript and runs tests, runner stage creates minimal production image. Defines EXPOSE 3000, requires python3 and FFmpeg. Critical for understanding build process and image structure."
+    },
+    {
+      "path": "package.json",
+      "relevance": 0.95,
+      "rationale": "Defines build script 'tsc --noEmit' (type-check only), test script 'vitest run', and postinstall hook 'prisma generate'. Uses yarn as package manager. Essential for workflow build steps."
+    },
+    {
+      "path": "deploy/handy.yaml",
+      "relevance": 0.9,
+      "rationale": "Kubernetes Deployment manifest showing current image reference 'docker.korshakov.com/handy-server:{version}' at line 26. This is the deployment target that needs to switch to Aliyun ACR. Also shows container port 3005 (not 3000) and required environment variables."
+    },
+    {
+      "path": "tsconfig.json",
+      "relevance": 0.7,
+      "rationale": "TypeScript configuration for build process. Must be validated during Docker build."
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "relevance": 0.65,
+      "rationale": "Database schema copied during Docker build (line 11 of Dockerfile). prisma generate runs in postinstall hook."
+    },
+    {
+      "path": "sources/main.ts",
+      "relevance": 0.6,
+      "rationale": "Application entry point executed by 'yarn start' in production image (Dockerfile line 45)."
+    }
+  ],
+  "patterns": "Multi-stage Docker build pattern with separation of build-time and runtime dependencies. Build stage installs python3, FFmpeg, g++, build-essential for compilation; runtime stage only needs python3 and FFmpeg. Type-checking via 'tsc --noEmit'而非 emitting JavaScript - code runs via tsx directly. Package manager: yarn with --frozen-lockfile flag for reproducible builds. No .dockerignore file present - should be added to exclude node_modules, .git, .env files, etc. Kubernetes deployment uses external secrets via ExternalSecret operator for sensitive data.",
+  "dependencies": "Build tools: TypeScript 5.4.3, tsx 4.19.2, Vitest 3.2.0. Runtime: Node.js 20, Fastify 5.2.0, Prisma 6.11.1, Socket.io 4.8.1, ioredis 5.6.1. External services: PostgreSQL (database), Redis (cache/pub-sub), MinIO (S3-compatible storage). FFmpeg required for media processing. Python3 required (likely for FFmpeg dependencies or build tools).",
+  "integration_points": "New GitHub Actions workflow will integrate at: (1) .github/workflows/ directory to be created - no existing workflows present, (2) Docker build process at Dockerfile lines 22 (yarn build) and 14 (yarn install), (3) Image registry update needed at deploy/handy.yaml line 26: 'docker.korshakov.com/handy-server:{version}' → '<aliyun-registry>/<namespace>/happy-server:{version}', (4) Port configuration note: Dockerfile exposes 3000 but Kubernetes uses containerPort 3005 (deploy/handy.yaml line 28) - ENV PORT=3005 in deployment overrides. Workflow should trigger on push to main branch and/or on tags for versioned releases.",
+  "constraints": "No existing CI/CD infrastructure - .github/workflows directory does not exist, requiring full workflow setup from scratch. Current private registry (docker.korshakov.com) suggests self-hosted or private container registry. Port mismatch: Dockerfile exposes 3000 but deployment uses 3005 (managed via PORT env var). No .dockerignore file exists - may cause bloated build context. TypeScript build is type-check only (tsc --noEmit) - runtime uses tsx for execution. Cannot modify Prisma schema - database migrations managed by human only (per CLAUDE.md). Must use 4-space tabs (not 2 spaces) following existing code style. All file operations require absolute imports with '@/'.",
+  "clarification_needs": [
+    {
+      "question": "Which Aliyun ACR region should be used for the container registry?",
+      "context": "Aliyun Container Registry (ACR) is region-specific. Common regions include cn-hangzhou, cn-beijing, cn-shanghai, cn-shenzhen, etc. This affects the registry URL format (e.g., registry.cn-hangzhou.aliyuncs.com).",
+      "options": [
+        "cn-hangzhou (recommended - most common)",
+        "cn-beijing",
+        "cn-shanghai",
+        "cn-shenzhen"
+      ],
+      "recommended": 0
+    },
+    {
+      "question": "What should be the Aliyun ACR namespace and image name?",
+      "context": "ACR images follow the format: <registry-url>/<namespace>/<image-name>:<tag>. Current image is 'docker.korshakov.com/handy-server'. Need to determine ACR namespace (often username or organization name) and confirm image name.",
+      "options": [
+        "Namespace: 'cybexr', Image: 'happy-server' (based on git remote username)",
+        "Namespace: 'slopus', Image: 'happy-server' (based on original repo owner)",
+        "Namespace: 'handy', Image: 'server'",
+        "Custom namespace and image name (to be specified)"
+      ],
+      "recommended": 0
+    },
+    {
+      "question": "What should trigger the Docker build and push workflow?",
+      "context": "GitHub Actions workflows need trigger conditions. This affects when images are built and pushed to ACR.",
+      "options": [
+        "Push to main branch only",
+        "Git tags (e.g., v*) for versioned releases",
+        "Both push to main and tags",
+        "Manual workflow trigger only"
+      ],
+      "recommended": 2
+    },
+    {
+      "question": "How should Aliyun ACR authentication be configured?",
+      "context": "Need to push images to private ACR registry. Options differ in security and convenience.",
+      "options": [
+        "GitHub Secrets with ACR username/password (recommended)",
+        "OCI-based authentication with Access Token",
+        "RAM role with OIDC provider for GitHub Actions (most secure)",
+        "Public registry (no authentication needed)"
+      ],
+      "recommended": 0
+    },
+    {
+      "question": "Should the workflow also update the Kubernetes deployment manifest?",
+      "context": "After pushing new image to ACR, the deploy/handy.yaml file needs to reference the new registry. This can be automated or done manually.",
+      "options": [
+      ],
+      "recommended": 0
+    }
+  ],
+  "_metadata": {
+    "timestamp": "2026-01-01T14:55:00+08:00",
+    "task_description": "帮我加个workflow build 并推送到 aliyun acr镜像仓库",
+    "source": "cli-explore-agent",
+    "exploration_angle": "infrastructure",
+    "exploration_index": 1,
+    "total_explorations": 3,
+    "duration_seconds": 180
+  }
+}

@@ -1,0 +1,165 @@
+{
+  "summary": "Implement GitHub Actions workflow to build Docker images and push to Aliyun Container Registry (ACR) Personal Edition in cn-shanghai region. The workflow will trigger on pushes to main branch and tag creation, use docker/login-action for ACR authentication via GitHub Secrets (ACR_USERNAME, ACR_PASSWORD, ACR_NAMESPACE, ACR_IMAGE_NAME), and push images with both git-sha and version tags for deployment flexibility.",
+  "approach": "Create .github/workflows/docker-build.yml from scratch using docker/build-push-action for multi-platform builds (linux/amd64) and docker/login-action for ACR authentication. Complement with .dockerignore to exclude node_modules, .git, .env files, .workflow, and logs for optimized build context. Optionally update deploy/handy.yaml to reference ACR registry. All changes follow existing Dockerfile multi-stage build pattern and respect project constraints (no modifications to Prisma schema, 4-space tabs, absolute imports with '@/').",
+  "tasks": [
+    {
+      "id": "T1",
+      "title": "Create Docker build workflow and optimize build context",
+      "scope": ".github/workflows/docker-build.yml + .dockerignore",
+      "action": "Create",
+      "description": "Create GitHub Actions workflow file that builds Docker image and pushes to Aliyun ACR, plus .dockerignore to optimize build context by excluding unnecessary files.",
+      "modification_points": [
+        {
+          "file": ".github/workflows/docker-build.yml",
+          "target": "entire file",
+          "change": "Create new workflow with ACR authentication, multi-platform build (linux/amd64), and image tagging (git-sha + version from package.json)"
+        },
+        {
+          "file": ".dockerignore",
+          "target": "entire file",
+          "change": "Create file with patterns: node_modules, .git, .env*, .workflow, .logs, *.log, coverage, .vscode, .idea, *.md"
+        }
+      ],
+      "implementation": [
+        "Create .github/workflows/ directory structure if it doesn't exist",
+        "Write docker-build.yml with: trigger on push to main + tags, ACR login using docker/login-action with secrets.ACR_USERNAME/ACR_PASSWORD, build-push-action with platforms linux/amd64, tags using github.sha and package.json version",
+        "Add .dockerignore file in project root with exclusion patterns for node_modules, .git, .env files, .workflow, logs, and development artifacts",
+        "Configure workflow to use GitHub Secrets: ACR_USERNAME, ACR_PASSWORD, ACR_NAMESPACE, ACR_IMAGE_NAME for flexible image naming",
+        "Set image tags: git-sha (short) for all builds, plus version tag (from package.json) when triggered by tag",
+        "Verify workflow syntax and authentication flow against Aliyun ACR Personal Edition registry (registry.cn-shanghai.aliyuncs.com)"
+      ],
+      "reference": {
+        "pattern": "Multi-stage Docker build with GitHub Actions",
+        "files": [
+          "Dockerfile",
+          "deploy/handy.yaml"
+        ],
+        "examples": "Follow existing multi-stage build pattern (builder: node:20 with build tools, runner: node:20 minimal runtime). Reference docker/login-action and docker/build-push-action GitHub documentation for ACR integration."
+      },
+      "acceptance": [
+        "GitHub workflow file exists at .github/workflows/docker-build.yml with valid YAML syntax",
+        "Workflow uses docker/login-action for ACR authentication with secrets.ACR_USERNAME and secrets.ACR_PASSWORD",
+        "Workflow builds and pushes to registry.cn-shanghai.aliyuncs.com/${{ secrets.ACR_NAMESPACE }}/${{ secrets.ACR_IMAGE_NAME }}:github.sha and version tags",
+        ".dockerignore excludes node_modules, .git, .env*, .workflow, logs reducing build context by >60%"
+      ],
+      "depends_on": [],
+      "cli_execution_id": "docker-build-aliyun-acr-2026-01-01-T1",
+      "cli_execution": {
+        "strategy": "new"
+      }
+    },
+    {
+      "id": "T2",
+      "title": "Document GitHub Actions Secrets setup",
+      "scope": ".workflow/docs/github-secrets-setup.md (or inline documentation)",
+      "action": "Create",
+      "description": "Create documentation for required GitHub Actions Secrets (ACR_USERNAME, ACR_PASSWORD, ACR_NAMESPACE, ACR_IMAGE_NAME) to guide users through ACR authentication setup.",
+      "modification_points": [
+        {
+          "file": ".workflow/docs/github-secrets-setup.md",
+          "target": "entire file",
+          "change": "Create documentation with step-by-step instructions for obtaining ACR credentials and configuring GitHub Secrets"
+        }
+      ],
+      "implementation": [
+        "Create .workflow/docs/ directory if it doesn't exist",
+        "Document how to obtain ACR username and password from Aliyun Console (Container Registry > Access Tokens)",
+        "Document GitHub Secrets configuration: ACR_USERNAME, ACR_PASSWORD, ACR_NAMESPACE (Aliyun account ID or custom namespace), ACR_IMAGE_NAME (e.g., 'happy-server')",
+        "Include example registry URL format: registry.cn-shanghai.aliyuncs.com/<namespace>/<image>:<tag>",
+        "Add troubleshooting section for common authentication errors (401 unauthorized, registry not found)"
+      ],
+      "reference": {
+        "pattern": "GitHub Actions Secrets documentation",
+        "files": [],
+        "examples": "Follow Aliyun ACR documentation for Personal Edition access token creation and GitHub Actions secrets best practices"
+      },
+      "acceptance": [
+        "Documentation file exists with clear instructions for all 4 required GitHub Secrets",
+        "Includes ACR region reference (cn-shanghai) and Personal Edition specifics",
+        "Provides example registry URL format and troubleshooting steps",
+        "Documentation is concise (≤200 words) and actionable"
+      ],
+      "depends_on": [],
+      "cli_execution_id": "docker-build-aliyun-acr-2026-01-01-T2",
+      "cli_execution": {
+        "strategy": "new"
+      }
+    },
+    {
+      "id": "T3",
+      "title": "Update Kubernetes deployment manifest for ACR registry",
+      "scope": "deploy/handy.yaml",
+      "action": "Update",
+      "description": "Optionally update the Kubernetes deployment manifest to reference Aliyun ACR registry instead of docker.korshakov.com, enabling deployment from new registry.",
+      "modification_points": [
+        {
+          "file": "deploy/handy.yaml",
+          "target": "spec.template.spec.containers[0].image (line 26)",
+          "change": "Update image reference from 'docker.korshakov.com/handy-server:{version}' to 'registry.cn-shanghai.aliyuncs.com/${ACR_NAMESPACE}/happy-server:{version}'"
+        }
+      ],
+      "implementation": [
+        "Read deploy/handy.yaml to understand current image reference structure",
+        "Update image field to use ACR registry URL format: registry.cn-shanghai.aliyuncs.com/<namespace>/happy-server:{version}",
+        "Preserve existing version placeholder pattern ({version}) for Helm/kustomize compatibility",
+        "Maintain all existing deployment configuration (port 3005, env vars, health checks, external secrets)",
+        "Verify YAML syntax and deployment manifest validity"
+      ],
+      "reference": {
+        "pattern": "Kubernetes deployment manifest",
+        "files": [
+          "deploy/handy.yaml"
+        ],
+        "examples": "Follow existing deployment structure (ExternalSecret operator, environment variable injection, health checks). Reference Aliyun ACR documentation for private image pull configuration if needed."
+      },
+      "acceptance": [
+        "deploy/handy.yaml updated with ACR registry URL (registry.cn-shanghai.aliyuncs.com/<namespace>/happy-server:{version})",
+        "Existing deployment configuration preserved (port 3005, external secrets, health checks, env vars)",
+        "YAML syntax is valid and deployment manifest is parsable",
+        "Version placeholder pattern ({version}) maintained for templating tools"
+      ],
+      "depends_on": ["T1"],
+      "cli_execution_id": "docker-build-aliyun-acr-2026-01-01-T3",
+      "cli_execution": {
+        "strategy": "fork",
+        "resume_from": "docker-build-aliyun-acr-2026-01-01-T1"
+      }
+    }
+  ],
+  "flow_control": {
+    "execution_order": [
+      {
+        "phase": "parallel-1",
+        "tasks": ["T1", "T2"],
+        "type": "parallel"
+      }
+    ],
+    "exit_conditions": {
+      "success": "T1 and T2 completed: workflow builds and pushes to ACR, documentation created",
+      "failure": "ACR authentication fails or workflow syntax errors prevent successful build"
+    },
+    "user_modifications": {
+      "skip_tasks": ["T3"],
+      "reason": "User requested to remove K8s support - skip deploy/handy.yaml update"
+    }
+  },
+  "focus_paths": [
+    ".github/workflows/docker-build.yml",
+    ".dockerignore",
+    ".workflow/docs/github-secrets-setup.md"
+  ],
+  "estimated_time": "45 minutes",
+  "recommended_execution": "Agent",
+  "complexity": "Medium",
+  "_metadata": {
+    "timestamp": "2026-01-01T15:10:00+08:00",
+    "source": "cli-lite-planning-agent",
+    "planning_mode": "agent-based",
+    "exploration_angles": [
+      "infrastructure",
+      "security",
+      "dependencies"
+    ],
+    "duration_seconds": 300
+  }
+}

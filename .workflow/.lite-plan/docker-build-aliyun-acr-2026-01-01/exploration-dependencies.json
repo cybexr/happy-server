@@ -1,0 +1,120 @@
+{
+  "project_structure": "Node.js 20 TypeScript application with multi-stage Docker build. Build stage (builder) compiles native dependencies (sharp) and runs TypeScript type checking. Runtime stage (runner) executes TypeScript directly via tsx. Application requires PostgreSQL, Redis, and S3-compatible storage. Prisma ORM used for database access. Source code in /sources directory with modular app architecture (api, auth, events, feed, github, kv, monitoring, presence, session, social). Deployment manifests in /deploy directory for Kubernetes.",
+  "relevant_files": [
+    {
+      "path": "package.json",
+      "relevance": 1.0,
+      "rationale": "Defines all dependencies, build scripts, and postinstall hooks. Critical for understanding what needs to be installed and built. yarn build runs tsc --noEmit, postinstall runs prisma generate."
+    },
+    {
+      "path": "Dockerfile",
+      "relevance": 1.0,
+      "rationale": "Multi-stage build configuration. Builder stage: node:20 with python3, ffmpeg, make, g++, build-essential for compiling sharp. Runner stage: node:20 with python3, ffmpeg. Runs tsx directly on TypeScript sources."
+    },
+    {
+      "path": "tsconfig.json",
+      "relevance": 0.8,
+      "rationale": "TypeScript compiler configuration. Target: ESNext, module: commonjs, strict mode enabled. No actual JS compilation (tsc --noEmit is type-check only)."
+    },
+    {
+      "path": "prisma/schema.prisma",
+      "relevance": 0.9,
+      "rationale": "Prisma schema requiring client generation via 'prisma generate'. PostgreSQL database. Defines all data models."
+    },
+    {
+      "path": "sources/main.ts",
+      "relevance": 0.7,
+      "rationale": "Application entry point showing runtime dependencies: db (PostgreSQL), redis, auth module, metrics server on port 9090, API server. Expects DATABASE_URL, REDIS_URL, and other env vars."
+    },
+    {
+      "path": "yarn.lock",
+      "relevance": 0.8,
+      "rationale": "Locked dependency versions for reproducible builds. Used with --frozen-lockfile in Docker build."
+    },
+    {
+      "path": "deploy/handy.yaml",
+      "relevance": 0.6,
+      "rationale": "Kubernetes deployment manifest showing image: docker.korshakov.com/handy-server:{version}, port 3005, health check on /health, secrets management pattern. Reference for ACR push target structure."
+    },
+    {
+      "path": "vitest.config.ts",
+      "relevance": 0.3,
+      "rationale": "Test configuration using vitest with node environment. Not critical for build but part of dev workflow."
+    },
+    {
+      "path": ".env.dev",
+      "relevance": 0.4,
+      "rationale": "Environment variables for local development. Should NOT be included in Docker image. Use runtime secrets instead."
+    }
+  ],
+  "patterns": "Multi-stage Docker build pattern: (1) Builder stage with full build toolchain compiles native dependencies and runs type checking, (2) Runtime stage is minimal with only runtime dependencies. Application runs TypeScript directly via tsx (no pre-compilation to JS). Yarn package manager with frozen lockfile for reproducibility. Prisma client generation in postinstall hook. Kubernetes deployment with external secrets management. Health check endpoint at /health. Metrics endpoint at /metrics for Prometheus. Port 3000 exposed (mapped to 3005 in K8s). No .dockerignore file present - should add one to exclude .git, node_modules, .env files, logs, and workflow artifacts.",
+  "dependencies": "Build-time dependencies: node:20 base image, python3, ffmpeg, make, g++, build-essential (for sharp), typescript, tsx, vitest, all devDependencies. Runtime dependencies: node:20, python3, ffmpeg, all dependencies from package.json including sharp (pre-compiled), tsx (for TS execution), @prisma/client, ioredis, fastify, socket.io, axios, zod, etc. External services: PostgreSQL (DATABASE_URL), Redis (REDIS_URL), S3-compatible storage (S3_* env vars). Critical: tsx and typescript must be in runtime container because app executes TS directly, not compiled JS.",
+  "integration_points": "Build system integration: package.json scripts (build, postinstall, start), Dockerfile stages, yarn.lock for reproducible builds. Runtime integration: DATABASE_URL for Prisma, REDIS_URL for ioredis, environment variables for external services (GitHub, S3, E2B, RevenueCat, ElevenLabs). Kubernetes integration via /deploy manifests. Container registry: currently docker.korshakov.com, needs migration to Aliyun ACR. Health check at /health for Kubernetes probes. Metrics at /metrics for Prometheus.",
+  "constraints": "Must use Node.js 20 runtime. Must have FFmpeg available at runtime (media processing). Must have python3 at runtime. Sharp native dependency must be compiled for target architecture during build. TypeScript executed directly via tsx (no JS compilation step). Prisma client must be generated at build time. Cannot include environment files in image. Multi-stage build required to keep final image size minimal. All env vars must be provided at runtime via Kubernetes secrets or ConfigMaps. Port 3000 hardcoded in Dockerfile but 3005 in K8s manifest (inconsistency to resolve). No existing .dockerignore file - should create one. No existing GitHub workflows - will create from scratch.",
+  "clarification_needs": [
+    {
+      "question": "What is the Aliyun ACR registry URL and region for pushing Docker images?",
+      "context": "The current Kubernetes deployment uses docker.korshakov.com/handy-server:{version}. Need to migrate to Aliyun Container Registry. ACR URLs typically follow format: registry.{region}.aliyuncs.com/{namespace}/{image}:{tag}",
+      "options": [
+        "registry.cn-hangzhou.aliyuncs.com (China East 1)",
+        "registry.cn-beijing.aliyuncs.com (China North 2)",
+        "registry.cn-shenzhen.aliyuncs.com (China South 1)",
+        "registry.{other-region}.aliyuncs.com (specify region)"
+      ],
+      "recommended": 0
+    },
+    {
+      "question": "What image naming and tagging strategy should be used for ACR?",
+      "context": "Current K8s manifest uses {version} placeholder. ACR push workflow needs clear naming convention. Options impact image versioning and rollback strategies.",
+      "options": [
+        "Use git commit SHA as tag (e.g., happy-server:abc123def)",
+        "Use semantic version (e.g., happy-server:1.2.3)",
+        "Use git branch + timestamp (e.g., happy-server:main-20260101-143026)",
+        "Use 'latest' for main branch + commit SHA for PRs"
+      ],
+      "recommended": 0
+    },
+    {
+      "question": "When should the ACR push workflow be triggered?",
+      "context": "GitHub Actions workflow needs trigger conditions. Different strategies affect CI/CD pipeline behavior and resource usage.",
+      "options": [
+        "On push to main branch only (production builds)",
+        "On every push to any branch (all branches)",
+        "On push to main + pull requests (PRs for testing)",
+        "Manual trigger via workflow_dispatch only"
+      ],
+      "recommended": 2
+    },
+    {
+      "question": "Should the workflow also update the Kubernetes deployment manifest after pushing to ACR?",
+      "context": "Current K8s manifest uses docker.korshakov.com. Need to decide if workflow updates deploy/handy.yaml to point to new ACR image URL automatically.",
+      "options": [
+        "Yes, update deploy/handy.yaml with new ACR image URL",
+        "No, only push to ACR, update manifest manually",
+        "Create separate manifest for ACR (deploy/handy-aliyun.yaml)",
+        "Use Kustomize overlay for image substitution"
+      ],
+      "recommended": 1
+    },
+    {
+      "question": "What should be the image repository name in Aliyun ACR?",
+      "context": "Need to decide the repository name under the Aliyun namespace. Should match current naming or follow new conventions.",
+      "options": [
+        "happy-server (match project name)",
+        "handy-server (match current K8s deployment name)",
+        "happy (shorter name)",
+        "Other (specify name)"
+      ],
+      "recommended": 0
+    }
+  ],
+  "_metadata": {
+    "timestamp": "2026-01-01T14:30:00.000Z",
+    "task_description": "帮我加个workflow build 并推送到 aliyun acr镜像仓库",
+    "source": "cli-explore-agent",
+    "exploration_angle": "dependencies",
+    "exploration_index": 3,
+    "total_explorations": 3,
+    "duration_seconds": 65
+  }
+}
