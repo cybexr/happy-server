@@ -19,7 +19,12 @@ export const s3host = process.env.S3_HOST ?? 'localhost';
 export const s3public = process.env.S3_PUBLIC_URL ?? `http${s3UseSSL ? 's' : ''}://${s3host}:${s3Port}`;
 
 export async function loadFiles() {
-    await s3client.bucketExists(s3bucket); // Throws if bucket does not exist or is not accessible
+    try {
+        await s3client.bucketExists(s3bucket);
+    } catch (error) {
+        console.warn(`⚠️  S3/Minio not available at ${s3Host}:${s3Port}. File storage features will be disabled.`);
+        console.warn('   Start Minio with: yarn s3 && yarn s3:init');
+    }
 }
 
 export function getPublicUrl(path: string) {
