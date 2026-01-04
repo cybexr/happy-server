@@ -22,23 +22,29 @@ class AuthModule {
         if (this.tokens) {
             return; // Already initialized
         }
-        
+
+        const masterSecret = process.env.HANDY_MASTER_SECRET ?? 'default-dev-key-change-in-production';
+
+        if (!process.env.HANDY_MASTER_SECRET) {
+            console.warn('⚠️  HANDY_MASTER_SECRET not set - using default development key. This is NOT secure for production!');
+        }
+
         log({ module: 'auth' }, 'Initializing auth module...');
-        
+
         const generator = await privacyKit.createPersistentTokenGenerator({
             service: 'handy',
-            seed: process.env.HANDY_MASTER_SECRET!
+            seed: masterSecret
         });
 
-        
+
         const verifier = await privacyKit.createPersistentTokenVerifier({
             service: 'handy',
             publicKey: generator.publicKey
         });
-        
+
         const githubGenerator = await privacyKit.createEphemeralTokenGenerator({
             service: 'github-happy',
-            seed: process.env.HANDY_MASTER_SECRET!,
+            seed: masterSecret,
             ttl: 5 * 60 * 1000 // 5 minutes
         });
 
