@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { startApi } from "@/app/api/api";
 import { log } from "@/utils/log";
 import { awaitShutdown, onShutdown } from "@/utils/shutdown";
@@ -12,7 +13,27 @@ import { initEncrypt } from "./modules/encrypt";
 import { initGithub } from "./modules/github";
 import { loadFiles } from "./storage/files";
 
+async function runMigrations() {
+    try {
+        log('Running Prisma migrations...');
+        execSync('npx prisma migrate deploy', {
+            stdio: 'inherit',
+            env: process.env
+        });
+        log('Prisma migrations completed successfully');
+    } catch (error) {
+        log({
+            level: 'error',
+            error: error instanceof Error ? error.message : String(error)
+        }, 'Prisma migrations failed');
+        throw error;
+    }
+}
+
 async function main() {
+
+    // Run database migrations before connecting
+    await runMigrations();
 
     // Storage
     await db.$connect();
